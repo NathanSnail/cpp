@@ -1,0 +1,2 @@
+g++ main.cpp -Wall -Werror=pedantic -Werror -Wpedantic -Wextra -O3 -o out && ./out
+rm ./out
