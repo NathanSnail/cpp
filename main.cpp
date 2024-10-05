@@ -15,20 +15,20 @@
 
 template <typename T> class vector {
       private:
-	const int VEC_BASE_SIZE = 8;
+	const static size_t VEC_BASE_SIZE = 8;
 	T *first;
 	T *last;     // write to this
 	T *capacity; // capacity cannot be written to
 
 	void expand_checked() {
 		if (this->capacity == this->last) {
-			int len = this->len();
-			int new_size = len * 2;
+			size_t len = this->len();
+			size_t new_size = len * 2;
 
 			// move buffer
 			T *new_buffer = static_cast<T *>(
 			    ::operator new[](new_size * sizeof(T)));
-			for (int i = 0; i < this->last - this->first; i++) {
+			for (size_t i = 0; i < this->len(); i++) {
 				new (&new_buffer[i]) T(std::move((*this)[i]));
 				(*this)[i].~T();
 			}
@@ -46,25 +46,29 @@ template <typename T> class vector {
 		last = first;
 		capacity = first + VEC_BASE_SIZE;
 	}
-	vector(vector<T> &other) {
-		int alloc_size = other.size();
+	vector(const vector<T> &other) {
+		size_t alloc_size = other.size();
 		first = (T *)::operator new[](alloc_size);
 		last = first;
 		capacity = first + alloc_size;
 	}
 	vector(vector<T> &&other)
-	    : first(other.first), last(other.last), capacity(other.capacity) {}
+	    : first(other.first), last(other.last), capacity(other.capacity) {
+		other.first = nullptr;
+		other.last = nullptr;
+		other.capacity = nullptr;
+	}
 
-	T *begin() { return this->first; }
-	T *end() { return this->last; }
+	T *begin() const { return this->first; }
+	T *end() const { return this->last; }
 	~vector() {
 		for (T *el = this->first; el < this->last; el++) {
 			el->~T();
 		}
 		::operator delete[](this->first);
 	}
-	int len() { return this->last - this->first; }
-	int size() { return this->capacity - this->first; }
+	size_t len() const { return this->last - this->first; }
+	size_t size() const { return this->capacity - this->first; }
 
 	void push(T &&elem) {
 		expand_checked();
@@ -83,6 +87,8 @@ template <typename T> class vector {
 		return std::move(*this->last);
 	}
 
+	T erase(size_t index) {}
+
 	void shrink() {
 		/*if ((this->capacity - this->first) / 4 + this->first >=
 			this->last &&
@@ -98,7 +104,8 @@ template <typename T> class vector {
 		todo();
 	}
 
-	T &operator[](int index) { return this->first[index]; }
+	T &operator[](size_t index) { return this->first[index]; }
+	const T &operator[](size_t index) const { return this->first[index]; }
 };
 
 void not_leak() {
@@ -111,7 +118,6 @@ void not_leak() {
 
 int main() {
 	vector<int> a;
-	std::vector<int> std_vec;
 
 	a.push(1);
 	dbg(a[0]);
@@ -139,4 +145,6 @@ int main() {
 	for (int i = 0; i < 10; i++) {
 		not_leak();
 	}
+	vector<vector<int>> recursive;
+	recursive.push(a);
 }
