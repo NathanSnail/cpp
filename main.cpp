@@ -14,13 +14,16 @@
 
 #define todo() static_assert(false, "Function not implemented!");
 
-#define debug_log(msg) std::cout << msg << "\n";
+#define debug_log(msg) std::cout << msg << "\n"
 
-inline const char *demangle(const char *s) {
-	return abi::__cxa_demangle(s, 0, 0, NULL);
+inline std::string demangle(const char *s) {
+	const char *result = abi::__cxa_demangle(s, 0, 0, NULL);
+	std::string str = std::string(result);
+	free(const_cast<void *>(static_cast<const void *>(result)));
+	return str;
 }
 
-template <typename T> inline const char *type_name() {
+template <typename T> inline std::string type_name() {
 	return demangle(typeid(T).name());
 }
 
@@ -33,6 +36,7 @@ template <typename T> class Vector {
 
 	void expand_checked() {
 		if (this->capacity == this->last) {
+			debug_log("expanding");
 			size_t len = this->len();
 			size_t new_size = len * 2;
 
@@ -59,7 +63,7 @@ template <typename T> class Vector {
 	}
 	Vector(const Vector<T> &other) {
 		debug_log("copied");
-		size_t alloc_size = other.size();
+		size_t alloc_size = other.size() * sizeof(T);
 		first = (T *)::operator new(alloc_size);
 		size_t len = other.len();
 		for (size_t i = 0; i < len; i++) {
@@ -79,6 +83,7 @@ template <typename T> class Vector {
 	T *begin() const { return this->first; }
 	T *end() const { return this->last; }
 	~Vector() {
+		debug_log("freeing");
 		for (T *el = this->first; el < this->last; el++) {
 			el->~T();
 		}
@@ -104,7 +109,7 @@ template <typename T> class Vector {
 		return std::move(*this->last);
 	}
 
-	T erase(size_t index) {}
+	T erase(size_t index) { T elem = std::move(this[index]); }
 
 	void shrink() {
 		/*if ((this->capacity - this->first) / 4 + this->first >=
@@ -121,12 +126,19 @@ template <typename T> class Vector {
 		todo();
 	}
 
-	T &operator[](size_t index) { return this->first[index]; }
-	const T &operator[](size_t index) const { return this->first[index]; }
+	T &operator[](size_t index) {
+		assert(index < this->len());
+		return this->first[index];
+	}
+	const T &operator[](size_t index) const {
+		assert(index < this->len());
+		return this->first[index];
+	}
 };
 
 template <typename T>
 std::ostream &operator<<(std::ostream &os, const Vector<T> &vec) {
+
 	os << "Vector<" << type_name<T>() << ">[";
 	for (size_t i = 0; i < vec.len(); i++) {
 		os << vec[i];
@@ -149,10 +161,11 @@ void not_leak() {
 int main() {
 	Vector<int> a;
 
-	a.push(1);
+	a.push(10);
 	dbg(a[0]);
 	a[0] = 2;
 	dbg(a[0]);
+
 	int x = 7;
 	a.push(x);
 	a[1] = 6;
@@ -172,18 +185,18 @@ int main() {
 	dbg(b.size());
 	// b.shrink();
 	dbg(b.size());
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < 3; i++) {
 		not_leak();
 	}
 	Vector<int> copy = a;
 	dbg(copy);
+
 	Vector<Vector<int>> recursive;
 	dbg(a);
+	a.push(1);
 	recursive.push(a);
-	a.push(10);
 	dbg(a);
 	recursive[0].push(20);
 	recursive[0].push(30);
-	recursive.push(a);
 	dbg(recursive);
 }
