@@ -14,6 +14,8 @@
 
 #define todo() static_assert(false, "Function not implemented!");
 
+#define debug_log(msg) std::cout << msg << "\n";
+
 inline const char *demangle(const char *s) {
 	return abi::__cxa_demangle(s, 0, 0, NULL);
 }
@@ -36,12 +38,12 @@ template <typename T> class Vector {
 
 			// move buffer
 			T *new_buffer = static_cast<T *>(
-			    ::operator new[](new_size * sizeof(T)));
+			    ::operator new(new_size * sizeof(T)));
 			for (size_t i = 0; i < this->len(); i++) {
 				new (&new_buffer[i]) T(std::move((*this)[i]));
 				(*this)[i].~T();
 			}
-			::operator delete[](this->first);
+			::operator delete(this->first);
 
 			this->first = new_buffer;
 			this->capacity = this->first + new_size;
@@ -51,18 +53,24 @@ template <typename T> class Vector {
 
       public:
 	Vector() {
-		first = (T *)::operator new[](sizeof(T) * VEC_BASE_SIZE);
+		first = (T *)::operator new(sizeof(T) * VEC_BASE_SIZE);
 		last = first;
 		capacity = first + VEC_BASE_SIZE;
 	}
 	Vector(const Vector<T> &other) {
+		debug_log("copied");
 		size_t alloc_size = other.size();
-		first = (T *)::operator new[](alloc_size);
-		last = first;
+		first = (T *)::operator new(alloc_size);
+		size_t len = other.len();
+		for (size_t i = 0; i < len; i++) {
+			new (&first[i]) T(other[i]);
+		}
+		last = first + len;
 		capacity = first + alloc_size;
 	}
 	Vector(Vector<T> &&other)
 	    : first(other.first), last(other.last), capacity(other.capacity) {
+		debug_log("moved");
 		other.first = nullptr;
 		other.last = nullptr;
 		other.capacity = nullptr;
@@ -74,7 +82,7 @@ template <typename T> class Vector {
 		for (T *el = this->first; el < this->last; el++) {
 			el->~T();
 		}
-		::operator delete[](this->first);
+		::operator delete(this->first);
 	}
 	size_t len() const { return this->last - this->first; }
 	size_t size() const { return this->capacity - this->first; }
@@ -167,9 +175,13 @@ int main() {
 	for (int i = 0; i < 10; i++) {
 		not_leak();
 	}
+	Vector<int> copy = a;
+	dbg(copy);
 	Vector<Vector<int>> recursive;
+	dbg(a);
 	recursive.push(a);
 	a.push(10);
+	dbg(a);
 	recursive[0].push(20);
 	recursive[0].push(30);
 	recursive.push(a);
