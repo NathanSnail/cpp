@@ -1,2 +1,2 @@
-g++ main.cpp -Wall -Werror=pedantic -Werror -Wpedantic -Wextra -g -o out && valgrind ./out
+g++ main.cpp -Wall -Werror=pedantic -Werror -Wpedantic -Wextra -g -o out && valgrind --leak-check=full -s ./out
 rm ./out
