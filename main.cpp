@@ -171,5 +171,7 @@ int main() {
 	recursive.push(a);
 	a.push(10);
 	recursive[0].push(20);
+	recursive[0].push(30);
+	recursive.push(a);
 	dbg(recursive);
 }
