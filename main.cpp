@@ -2,10 +2,11 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <cxxabi.h>
 #include <iostream>
 #include <new>
+#include <ostream>
 #include <utility>
-#include <vector>
 
 #define dbg(expr)                                                              \
 	std::cout << __FILE__ << ":" << __LINE__ << ": " << #expr << " = "     \
@@ -13,7 +14,15 @@
 
 #define todo() static_assert(false, "Function not implemented!");
 
-template <typename T> class vector {
+inline const char *demangle(const char *s) {
+	return abi::__cxa_demangle(s, 0, 0, NULL);
+}
+
+template <typename T> inline const char *type_name() {
+	return demangle(typeid(T).name());
+}
+
+template <typename T> class Vector {
       private:
 	const static size_t VEC_BASE_SIZE = 8;
 	T *first;
@@ -41,18 +50,18 @@ template <typename T> class vector {
 	}
 
       public:
-	vector() {
+	Vector() {
 		first = (T *)::operator new[](sizeof(T) * VEC_BASE_SIZE);
 		last = first;
 		capacity = first + VEC_BASE_SIZE;
 	}
-	vector(const vector<T> &other) {
+	Vector(const Vector<T> &other) {
 		size_t alloc_size = other.size();
 		first = (T *)::operator new[](alloc_size);
 		last = first;
 		capacity = first + alloc_size;
 	}
-	vector(vector<T> &&other)
+	Vector(Vector<T> &&other)
 	    : first(other.first), last(other.last), capacity(other.capacity) {
 		other.first = nullptr;
 		other.last = nullptr;
@@ -61,7 +70,7 @@ template <typename T> class vector {
 
 	T *begin() const { return this->first; }
 	T *end() const { return this->last; }
-	~vector() {
+	~Vector() {
 		for (T *el = this->first; el < this->last; el++) {
 			el->~T();
 		}
@@ -108,8 +117,21 @@ template <typename T> class vector {
 	const T &operator[](size_t index) const { return this->first[index]; }
 };
 
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const Vector<T> &vec) {
+	os << "Vector<" << type_name<T>() << ">[";
+	for (size_t i = 0; i < vec.len(); i++) {
+		os << vec[i];
+		if (i != vec.len() - 1) {
+			os << ", ";
+		}
+	}
+	os << "]";
+	return os;
+}
+
 void not_leak() {
-	vector<int> thing;
+	Vector<int> thing;
 	const int test_size = 1 << 20;
 	for (int i = 0; i < test_size; i++) {
 		thing.push(i);
@@ -117,7 +139,7 @@ void not_leak() {
 }
 
 int main() {
-	vector<int> a;
+	Vector<int> a;
 
 	a.push(1);
 	dbg(a[0]);
@@ -131,7 +153,7 @@ int main() {
 	for (int elem : a) {
 		dbg(elem);
 	}
-	vector<int> b;
+	Vector<int> b;
 	const int test_size = 1 << 20;
 	for (int i = 0; i < test_size; i++) {
 		b.push(i);
@@ -145,6 +167,9 @@ int main() {
 	for (int i = 0; i < 10; i++) {
 		not_leak();
 	}
-	vector<vector<int>> recursive;
+	Vector<Vector<int>> recursive;
 	recursive.push(a);
+	a.push(10);
+	recursive[0].push(20);
+	dbg(recursive);
 }
