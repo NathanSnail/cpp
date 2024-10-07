@@ -16,6 +16,10 @@
 
 #define debug_log(msg) std::cout << msg << "\n"
 
+std::string operator""_s(const char *src, size_t len) {
+	return std::string(src, len);
+}
+
 inline std::string demangle(const char *s) {
 	const char *result = abi::__cxa_demangle(s, 0, 0, NULL);
 	std::string str = std::string(result);
@@ -106,7 +110,9 @@ template <typename T> class Vector {
 	T pop() {
 		assert(this->last != this->first);
 		this->last--;
-		return std::move(*this->last);
+		T elem = std::move(*this->last);
+		this->last->~T();
+		return elem;
 	}
 
 	T erase(size_t index) { T elem = std::move(this[index]); }
@@ -159,6 +165,8 @@ void not_leak() {
 }
 
 int main() {
+	std::string s = "hello world"_s;
+	std::cout << s << std::endl;
 	Vector<int> a;
 
 	a.push(10);
@@ -197,6 +205,8 @@ int main() {
 	recursive.push(a);
 	dbg(a);
 	recursive[0].push(20);
+	a.push(11);
 	recursive[0].push(30);
+	recursive.push(a);
 	dbg(recursive);
 }
