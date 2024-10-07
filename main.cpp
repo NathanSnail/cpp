@@ -59,13 +59,7 @@ template <typename T> class Vector {
 		}
 	}
 
-      public:
-	Vector() {
-		first = (T *)::operator new(sizeof(T) * VEC_BASE_SIZE);
-		last = first;
-		capacity = first + VEC_BASE_SIZE;
-	}
-	Vector(const Vector<T> &other) {
+	void copy(const Vector<T> &other) {
 		debug_log("copied");
 		size_t alloc_size = other.size() * sizeof(T);
 		first = (T *)::operator new(alloc_size);
@@ -75,6 +69,33 @@ template <typename T> class Vector {
 		}
 		last = first + len;
 		capacity = first + alloc_size;
+	}
+
+      public:
+	Vector() {
+		first = (T *)::operator new(sizeof(T) * VEC_BASE_SIZE);
+		last = first;
+		capacity = first + VEC_BASE_SIZE;
+	}
+	Vector(const Vector<T> &other) { copy(other); }
+	Vector<T> &operator=(const Vector<T> &other) {
+		if (this == &other) {
+			return this;
+		}
+		(*this).~T();
+		copy(other);
+	}
+	Vector<T> &operator=(Vector<T> &&other) {
+		if (this == &other) {
+			return this;
+		}
+		(*this).~T();
+		this->first = other.first;
+		this->last = other.last;
+		this->capacity = other.capacity;
+		other.first = nullptr;
+		other.last = nullptr;
+		other.capacity = nullptr;
 	}
 	Vector(Vector<T> &&other)
 	    : first(other.first), last(other.last), capacity(other.capacity) {
@@ -87,6 +108,9 @@ template <typename T> class Vector {
 	T *begin() const { return this->first; }
 	T *end() const { return this->last; }
 	~Vector() {
+		if (this->first == nullptr) {
+			return;
+		}
 		debug_log("freeing");
 		for (T *el = this->first; el < this->last; el++) {
 			el->~T();
@@ -115,7 +139,17 @@ template <typename T> class Vector {
 		return elem;
 	}
 
-	T erase(size_t index) { T elem = std::move(this[index]); }
+	T erase(size_t index) {
+		assert(index < this->len());
+		T elem = std::move((*this)[index]);
+		(*this)[index].~T();
+		for (size_t i = index; i < this->len() - 1; i++) {
+			new (&(*this)[i]) T(std::move((*this)[i + 1]));
+			(*this)[i + 1].~T();
+		}
+		this->last--;
+		return elem;
+	}
 
 	void shrink() {
 		/*if ((this->capacity - this->first) / 4 + this->first >=
@@ -196,7 +230,15 @@ int main() {
 	for (int i = 0; i < 3; i++) {
 		not_leak();
 	}
+	debug_log("hia");
 	Vector<int> copy = a;
+	dbg(a);
+	dbg(copy);
+	a.push(10);
+	dbg(a);
+	dbg(copy);
+	copy.push(20);
+	dbg(a);
 	dbg(copy);
 
 	Vector<Vector<int>> recursive;
@@ -208,5 +250,13 @@ int main() {
 	a.push(11);
 	recursive[0].push(30);
 	recursive.push(a);
+	dbg(recursive);
+	recursive[1].erase(1);
+	dbg(recursive);
+	recursive[0].erase(1);
+	dbg(recursive);
+	recursive[0].erase(2);
+	dbg(recursive);
+	recursive[0].erase(2);
 	dbg(recursive);
 }
