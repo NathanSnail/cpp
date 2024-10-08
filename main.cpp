@@ -7,6 +7,7 @@
 #include <new>
 #include <ostream>
 #include <utility>
+#include "macros.cpp"
 
 #define dbg(expr)                                                              \
 	std::cout << __FILE__ << ":" << __LINE__ << ": " << #expr << " = "     \
@@ -259,4 +260,5 @@ int main() {
 	dbg(recursive);
 	recursive[0].erase(2);
 	dbg(recursive);
+	foo();
 }
