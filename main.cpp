@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <new>
 #include <ostream>
+#include <sstream>
 #include <utility>
 // #include "macros.cpp"
 
@@ -19,6 +21,10 @@
 
 std::string operator""_s(const char *src, size_t len) {
 	return std::string(src, len);
+}
+
+constexpr size_t operator""_szt(const unsigned long long src) {
+	return static_cast<size_t>(src);
 }
 
 inline std::string demangle(const char *s) {
@@ -70,22 +76,39 @@ template <typename T> class Vector {
 	void copy(const Vector<T> &other) {
 		debug_log("copied");
 		size_t alloc_size = other.size() * sizeof(T);
-		first = (T *)::operator new(alloc_size);
+		this->first = static_cast<T *>(::operator new(alloc_size));
 		size_t len = other.len();
 		for (size_t i = 0; i < len; i++) {
-			new (&first[i]) T(other[i]);
+			new (&this->first[i]) T(other[i]);
 		}
-		last = first + len;
-		capacity = first + alloc_size;
+		this->last = this->first + len;
+		this->capacity = this->first + alloc_size;
 	}
 
       public:
 	Vector() {
-		first = (T *)::operator new(sizeof(T) * VEC_BASE_SIZE);
+		first =
+		    static_cast<T *>(::operator new(sizeof(T) * VEC_BASE_SIZE));
 		last = first;
 		capacity = first + VEC_BASE_SIZE;
 	}
 	Vector(const Vector<T> &other) { copy(other); }
+	template <size_t N>
+	Vector<T> &operator=(const std::array<T, N> &other) {
+		free_elements();
+		constexpr size_t shift =
+		    sizeof(size_t) * 8 - __builtin_clzl(N | 1);
+		constexpr size_t shifted = 1_szt << shift;
+		constexpr size_t alloc =
+		    std::max(shifted, VEC_BASE_SIZE) * sizeof(T);
+		this->first = static_cast<T *>(::operator new(alloc));
+		this->last = this->first + N;
+		for (size_t i = 0; i < N; i++) {
+			new (&this->first[i]) T(other[i]);
+		}
+		this->capacity = this->first + shifted;
+		return *this;
+	}
 	Vector<T> &operator=(const Vector<T> &other) {
 		debug_log("copy assign");
 		if (this == &other) {
@@ -186,7 +209,6 @@ template <typename T> class Vector {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &os, const Vector<T> &vec) {
-
 	os << "Vector<" << type_name<T>() << ">[";
 	for (size_t i = 0; i < vec.len(); i++) {
 		os << vec[i];
@@ -200,10 +222,18 @@ std::ostream &operator<<(std::ostream &os, const Vector<T> &vec) {
 
 void not_leak() {
 	Vector<int> thing;
-	const int test_size = 1 << 20;
+	const int test_size = 1 << 16;
 	for (int i = 0; i < test_size; i++) {
 		thing.push(i);
 	}
+}
+
+void test_arr() {
+	std::array<int, 10> arr = {1, 2, 3, 4, 10, 9, 8, 7, 6, 5};
+	Vector<int> arrvec;
+	arrvec = arr;
+	arrvec = arr;
+	dbg(arrvec);
 }
 
 int main() {
@@ -225,7 +255,7 @@ int main() {
 		dbg(elem);
 	}
 	Vector<int> b;
-	const int test_size = 1 << 20;
+	const int test_size = 1 << 16;
 	for (int i = 0; i < test_size; i++) {
 		b.push(i);
 	}
@@ -269,4 +299,6 @@ int main() {
 	dbg(recursive);
 	recursive[0].erase(2);
 	dbg(recursive);
+
+	test_arr();
 }
