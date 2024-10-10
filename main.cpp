@@ -7,7 +7,7 @@
 #include <new>
 #include <ostream>
 #include <utility>
-#include "macros.cpp"
+// #include "macros.cpp"
 
 #define dbg(expr)                                                              \
 	std::cout << __FILE__ << ":" << __LINE__ << ": " << #expr << " = "     \
@@ -60,6 +60,13 @@ template <typename T> class Vector {
 		}
 	}
 
+	void free_elements() {
+		for (T *el = this->first; el < this->last; el++) {
+			el->~T();
+		}
+		::operator delete(this->first);
+	}
+
 	void copy(const Vector<T> &other) {
 		debug_log("copied");
 		size_t alloc_size = other.size() * sizeof(T);
@@ -80,23 +87,26 @@ template <typename T> class Vector {
 	}
 	Vector(const Vector<T> &other) { copy(other); }
 	Vector<T> &operator=(const Vector<T> &other) {
+		debug_log("copy assign");
 		if (this == &other) {
-			return this;
+			return *this;
 		}
-		(*this).~T();
+		free_elements();
 		copy(other);
+		return *this;
 	}
 	Vector<T> &operator=(Vector<T> &&other) {
 		if (this == &other) {
-			return this;
+			return *this;
 		}
-		(*this).~T();
+		free_elements();
 		this->first = other.first;
 		this->last = other.last;
 		this->capacity = other.capacity;
 		other.first = nullptr;
 		other.last = nullptr;
 		other.capacity = nullptr;
+		return *this;
 	}
 	Vector(Vector<T> &&other)
 	    : first(other.first), last(other.last), capacity(other.capacity) {
@@ -112,11 +122,8 @@ template <typename T> class Vector {
 		if (this->first == nullptr) {
 			return;
 		}
+		free_elements();
 		debug_log("freeing");
-		for (T *el = this->first; el < this->last; el++) {
-			el->~T();
-		}
-		::operator delete(this->first);
 	}
 	size_t len() const { return this->last - this->first; }
 	size_t size() const { return this->capacity - this->first; }
@@ -241,6 +248,8 @@ int main() {
 	copy.push(20);
 	dbg(a);
 	dbg(copy);
+	Vector<int> copy2;
+	copy2 = a;
 
 	Vector<Vector<int>> recursive;
 	dbg(a);
@@ -260,5 +269,4 @@ int main() {
 	dbg(recursive);
 	recursive[0].erase(2);
 	dbg(recursive);
-	foo();
 }
