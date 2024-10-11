@@ -62,7 +62,7 @@ class Any {
 			os << "Unprintable Type";
 			return os;
 		};
-		virtual const std::type_info &type() const;
+		virtual const std::type_info &type() const = 0;
 	};
 
 	template <typename T> struct Specific : Generic {
@@ -92,8 +92,9 @@ class Any {
 };
 
 std::ostream &operator<<(std::ostream &os, Any &any) {
-	os << "Any<" << typeid_name(any.type()) << ">(" << any.value.get()
-	   << ")";
+	os << "Any<" << typeid_name(any.type()) << ">(";
+	any.value.get()->psuedo_lshift(os);
+	os << ")";
 	return os;
 }
 
