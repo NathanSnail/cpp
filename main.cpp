@@ -4,10 +4,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cxxabi.h>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <new>
+#include <optional>
 #include <ostream>
-#include <sstream>
+#include <type_traits>
+#include <typeinfo>
 #include <utility>
 // #include "macros.cpp"
 
@@ -34,8 +38,63 @@ inline std::string demangle(const char *s) {
 	return str;
 }
 
+inline std::string typeid_name(const std::type_info &T) {
+	return demangle(T.name());
+}
+
 template <typename T> inline std::string type_name() {
-	return demangle(typeid(T).name());
+	return typeid_name(typeid(T));
+}
+
+template <typename T, typename = void>
+struct can_stringify : std::false_type {};
+template <typename T>
+struct can_stringify<T, std::void_t<decltype(std::declval<std::ostream &>()
+					     << std::declval<T &>())>>
+    : std::true_type {};
+
+class Any {
+      private:
+	struct Generic {
+		virtual ~Generic() =
+		    default; // we need the vftable to include a destructor
+		virtual std::ostream &operator<<(std::ostream &os) {
+			os << "Unprintable Type";
+			return os;
+		};
+		virtual const std::type_info &type() const;
+	};
+
+	template <typename T> struct Specific : Generic {
+		T data;
+		Specific(const T &value) : data(value) {}
+		virtual const std::type_info &type() const { return typeid(T); }
+		typename std::enable_if<can_stringify<T>::value,
+					std::ostream &>::type
+		operator<<(std::ostream &os) {
+			os << this->data;
+			return os;
+		}
+	};
+
+      public:
+	std::unique_ptr<Generic> value;
+
+	template <typename T>
+	Any(const T &value) : value(std::make_unique<Specific<T>>(value)) {}
+	template <typename T> std::optional<std::reference_wrapper<T>> data() {
+		if (typeid(T) == value->type()) {
+			return {static_cast<Specific<T> &>(*value).data};
+		}
+		return {std::nullopt};
+	}
+	const std::type_info &type() const { return value->type(); }
+};
+
+std::ostream &operator<<(std::ostream &os, Any &any) {
+	os << "Any<" << typeid_name(any.type()) << ">(" << any.value.get()
+	   << ")";
+	return os;
 }
 
 template <typename T> class Vector {
@@ -97,7 +156,7 @@ template <typename T> class Vector {
 	Vector<T> &operator=(const std::array<T, N> &other) {
 		free_elements();
 		constexpr size_t shift =
-		    sizeof(size_t) * 8 - __builtin_clzl(N | 1);
+		    sizeof(size_t) * 8_szt - __builtin_clzl(N | 1);
 		constexpr size_t shifted = 1_szt << shift;
 		constexpr size_t alloc =
 		    std::max(shifted, VEC_BASE_SIZE) * sizeof(T);
@@ -301,4 +360,11 @@ int main() {
 	dbg(recursive);
 
 	test_arr();
+
+	Any any(10);
+	auto data = any.data<int>();
+	if (data.has_value()) {
+		data->get() = 20;
+	}
+	dbg(any);
 }
