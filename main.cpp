@@ -58,7 +58,7 @@ class Any {
 	struct Generic {
 		virtual ~Generic() =
 		    default; // we need the vftable to include a destructor
-		virtual std::ostream &operator<<(std::ostream &os) {
+		virtual std::ostream &psuedo_lshift(std::ostream &os) {
 			os << "Unprintable Type";
 			return os;
 		};
@@ -70,8 +70,8 @@ class Any {
 		Specific(const T &value) : data(value) {}
 		virtual const std::type_info &type() const { return typeid(T); }
 		typename std::enable_if<can_stringify<T>::value,
-					std::ostream &>::type
-		operator<<(std::ostream &os) {
+					std::ostream &>::
+		    type virtual psuedo_lshift(std::ostream &os) {
 			os << this->data;
 			return os;
 		}
