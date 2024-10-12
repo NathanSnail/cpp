@@ -69,9 +69,19 @@ class Any {
 		T data;
 		Specific(const T &value) : data(value) {}
 		virtual const std::type_info &type() const { return typeid(T); }
-		typename std::enable_if<can_stringify<T>::value,
-					std::ostream &>::
-		    type virtual psuedo_lshift(std::ostream &os) {
+		virtual std::ostream &psuedo_lshift(std::ostream &os) {
+			return lshift_impl(
+			    os,
+			    std::integral_constant<bool,
+						   can_stringify<T>::value>{});
+		}
+
+	      private:
+		std::ostream &lshift_impl(std::ostream &os, std::false_type) {
+			return Generic::psuedo_lshift(os);
+		}
+
+		std::ostream &lshift_impl(std::ostream &os, std::true_type) {
 			os << this->data;
 			return os;
 		}
@@ -367,5 +377,10 @@ int main() {
 	if (data.has_value()) {
 		data->get() = 20;
 	}
+	dbg(any);
+
+	struct empty {};
+	struct empty trash;
+	any = trash;
 	dbg(any);
 }
