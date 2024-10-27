@@ -5,8 +5,7 @@
 
 char *stringify(const char *ty, void *data) {
 	if (!strcmp(ty, "int")) {
-		char *s =
-		    (char *)malloc(50); // this is bound to be enough digits
+		char *s = (char *)malloc(50); // this is bound to be enough digits
 		sprintf(s, "%d", *(int *)data);
 		return s;
 	} else if (!strcmp(ty, "float")) {
@@ -26,24 +25,24 @@ char *stringify(const char *ty, void *data) {
 #define GETTER(n, f, ...) f(NS_GET(n __VA_OPT__(, ) __VA_ARGS__))
 #define GETTER_REDUCE(n, f, ...) f NS_GET(n __VA_OPT__(, ) __VA_ARGS__)
 #define EACH(f, ...)                                                           \
-	NS_EVAL(NS_REPEAT(NS_NARGS(__VA_ARGS__), GETTER,                       \
-			  f __VA_OPT__(, ) __VA_ARGS__))
+	NS_EVAL(NS_REPEAT(NS_NARGS(__VA_ARGS__), GETTER,                         \
+				f __VA_OPT__(, ) __VA_ARGS__))
 #define EACH_REDUCE(f, ...)                                                    \
-	NS_EVAL(NS_REPEAT(NS_NARGS(__VA_ARGS__), GETTER_REDUCE,                \
-			  f __VA_OPT__(, ) __VA_ARGS__))
+	NS_EVAL(NS_REPEAT(NS_NARGS(__VA_ARGS__), GETTER_REDUCE,                  \
+				f __VA_OPT__(, ) __VA_ARGS__))
 #define FIELD(a, b) a b;
 #define SHOW(a, b)                                                             \
-	{                                                                      \
-		char *s = stringify(#a, &thing->b);                            \
-		printf("thing->%s: %s = %s\n", #b, #a, s);                     \
-		free(s);                                                       \
+	{                                                                        \
+		char *s = stringify(#a, &thing->b);                                \
+		printf("thing->%s: %s = %s\n", #b, #a, s);                         \
+		free(s);                                                           \
 	}
 #define STRUCTURE(name, ...)                                                   \
-	typedef struct {                                                       \
-		EACH_REDUCE(FIELD, __VA_ARGS__)                                \
-	} name;                                                                \
-	void NS_CONCAT(print_, name)(name * thing) {                           \
-		EACH_REDUCE(SHOW, __VA_ARGS__)                                 \
+	typedef struct {                                                         \
+		EACH_REDUCE(FIELD, __VA_ARGS__)                                    \
+	} name;                                                                  \
+	void NS_CONCAT(print_, name)(name * thing) {                             \
+		EACH_REDUCE(SHOW, __VA_ARGS__)                                     \
 	}
 STRUCTURE(thingy, (int, a), (float, b), (const char *, c));
 
